@@ -158,6 +158,7 @@ char	netserver_id[]="\
 #endif
 
 #include "netsh.h"
+#include "swarm_client.h"
 
 #ifndef DEBUG_LOG_FILE_DIR
 #if defined(WIN32)
@@ -486,7 +487,11 @@ create_listens(char hostname[], char port[], int af) {
 
   while (local_res_temp != NULL) {
 
-    temp_socket = socket(local_res_temp->ai_family,SOCK_STREAM,0);
+      if (local_res_temp->ai_family != AF_INET) {
+          err("Swarm does not support IPv6. Exiting.");
+      }
+    temp_socket = rump_sys_socket(
+            RUMP_AF_INET, RUMP_SOCK_STREAM, 0);
 
     if (temp_socket == INVALID_SOCKET) {
       if (debug) {
@@ -502,9 +507,9 @@ create_listens(char hostname[], char port[], int af) {
     }
 
     /* happiness and joy, keep going */
-    if (setsockopt(temp_socket,
-		   SOL_SOCKET,
-		   SO_REUSEADDR,
+    if (rump_sys_setsockopt(temp_socket,
+		   RUMP_SOL_SOCKET,
+		   RUMP_SO_REUSEADDR,
 		   (char *)&on ,
 		   sizeof(on)) == SOCKET_ERROR) {
       if (debug) {
@@ -518,10 +523,10 @@ create_listens(char hostname[], char port[], int af) {
     }
     /* still happy and joyful */
 
-    if ((bind(temp_socket,
+    if ((rump_sys_bind(temp_socket,
 	      local_res_temp->ai_addr,
 	      local_res_temp->ai_addrlen) != SOCKET_ERROR) &&
-	(listen(temp_socket,128) != SOCKET_ERROR))  {
+	(rump_sys_listen(temp_socket,128) != SOCKET_ERROR))  {
 
       /* OK, now add to the list */
       temp_elt = (struct listen_elt *)malloc(sizeof(struct listen_elt));
@@ -554,7 +559,7 @@ create_listens(char hostname[], char port[], int af) {
 		errno);
 	fflush(stderr);
       }
-      close(temp_socket);
+      rump_sys_close(temp_socket);
     }
     local_res_temp = local_res_temp->ai_next;
   }
@@ -608,6 +613,7 @@ setup_listens(char name[], char port[], int af) {
     /* if we have IPv6, try that one first because it may be a superset */
 #ifdef AF_INET6
     if (do_inet6)
+        err("Swarm does not support IPv6 yet. Choose IPv4.");
       create_listens("::0",port,AF_INET6);
 #endif
     if (do_inet)
@@ -689,7 +695,7 @@ close_listens(struct listen_elt *list) {
   temp = list;
 
   while (temp) {
-    close(temp->fd);
+    rump_sys_close(temp->fd);
     temp = temp->next;
   }
 }
@@ -1553,6 +1559,8 @@ main(int argc, char *argv[]) {
     return -1 ;
   }
   strcpy(program, argv[0]);
+
+  init_swarm_client();
 
   init_netserver_globals();
 
