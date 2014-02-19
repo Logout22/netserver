@@ -152,6 +152,7 @@ char    netlib_id[]="\
 # include "missing/getaddrinfo.h"
 #endif
 
+#include "swarm_client.h"
 
 #include "hist.h"
 
@@ -1069,7 +1070,7 @@ emulate_alarm( int seconds )
 	   It is rather kludgy, but should be sufficient to
 	   get this puppy shipped.  The concept can be
 	   attributed/blamed :) on Robin raj 1/96 */
-	
+
 	if (win_kludge_socket != INVALID_SOCKET) {
 	  HandlesClosedFlags |= 1;
 	  closesocket(win_kludge_socket);
@@ -1200,7 +1201,7 @@ start_itimer(unsigned int interval_len_msec )
     LARGE_INTEGER liDueTime;
 	TIMECAPS ptc;
 	MMRESULT mmr;
-	
+
 	/* make sure timer resolution is at least as small as interval length */
 	timerRes=interval_len_msec;
 	mmr=timeGetDevCaps(&ptc, sizeof (ptc));
@@ -1211,7 +1212,7 @@ start_itimer(unsigned int interval_len_msec )
 		fflush(where);
 	  }
 	}
-	/* timeBeginPeriod() affects a global Windows setting. 
+	/* timeBeginPeriod() affects a global Windows setting.
 	Windows uses the lowest value (that is, highest resolution) requested by any process. */
 	mmr=timeBeginPeriod(timerRes);
 	/* Create a waitable timer. */
@@ -1222,7 +1223,7 @@ start_itimer(unsigned int interval_len_msec )
         fflush(where);
 		exit(1);
     }
- 	/*The time after which the state of the timer is to be set to signaled the first time, 
+ 	/*The time after which the state of the timer is to be set to signaled the first time,
 	in 100 nanosecond intervals.  Negative values indicate relative time. */
     liDueTime.QuadPart=-10000LL*interval_len_msec;
    /* Set the timer to wait for interval_len_msec and periodically signal every interval_len_msec */
@@ -2539,7 +2540,7 @@ send_response_n(int n)
   }
 
   /*KC*/
-  if ((bytes_sent = send(server_sock,
+  if ((bytes_sent = rump_sys_send(server_sock,
 			 (char *)&netperf_response,
 			 sizeof(netperf_response),
 			 0)) != sizeof(netperf_response)) {
@@ -2639,7 +2640,7 @@ recv_request_timed_n(int n, int seconds)
   do {
     FD_ZERO(&readfds);
     FD_SET(server_sock,&readfds);
-    if (select(FD_SETSIZE,
+    if (rump_sys_select(FD_SETSIZE,
 	       &readfds,
 	       0,
 	       0,
@@ -2653,7 +2654,7 @@ recv_request_timed_n(int n, int seconds)
       return -1;
     }
 
-    if ((bytes_recvd = recv(server_sock, buf, bytes_left, 0)) > 0) {
+    if ((bytes_recvd = rump_sys_recv(server_sock, buf, bytes_left, 0)) > 0) {
       tot_bytes_recvd += bytes_recvd;
       buf             += bytes_recvd;
       bytes_left      -= bytes_recvd;
@@ -2678,7 +2679,7 @@ recv_request_timed_n(int n, int seconds)
     Print_errno(where,
 		"recv_request: error on recv");
     fflush(where);
-    close(server_sock);
+    rump_sys_close(server_sock);
     return -1;
   }
 
@@ -2691,7 +2692,7 @@ recv_request_timed_n(int n, int seconds)
       fflush(where);
     }
 
-    close(server_sock);
+    rump_sys_close(server_sock);
     return 0;
   }
 
@@ -2703,7 +2704,7 @@ recv_request_timed_n(int n, int seconds)
 	    "recv_request: partial request received of %d bytes\n",
 	    tot_bytes_recvd);
     fflush(where);
-    close(server_sock);
+    rump_sys_close(server_sock);
     return -1;
   }
 
@@ -3964,7 +3965,7 @@ __forceinline void demo_interval_display(double actual_interval)
 {
   static int count = 0;
   struct timeval now;
-  
+
   gettimeofday(&now,NULL);
   switch (netperf_output_mode) {
   case HUMAN:
@@ -4078,7 +4079,7 @@ void demo_interval_tick(uint32_t units)
     temp_demo_ptr = demo_one_ptr;
     demo_one_ptr = demo_two_ptr;
     demo_two_ptr = temp_demo_ptr;
-    
+
   }
 }
 

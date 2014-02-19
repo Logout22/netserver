@@ -25,8 +25,8 @@
 #include <swarm.h>
 #include <swarm_client_ipc.h>
 
-static void __attribute__((__noreturn__))
-die(int e, const char *msg);
-
+void __attribute__((__noreturn__)) die(int e, const char *msg);
 void init_swarm_client();
+ssize_t rump_sys_send(int sockfd, const void *buf, size_t len, int flags);
+ssize_t rump_sys_recv(int sockfd, void *buf, size_t len, int flags);
 
