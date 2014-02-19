@@ -1,12 +1,15 @@
 #include "swarm_client.h"
 
-static void __attribute__((__noreturn__))
+static int unix_socket = -1;
+
+void __attribute__((__noreturn__))
 die(int e, const char *msg)
 {
 
     if (msg)
         warnx("%s: %d", msg, e);
     rump_sys_reboot(0, NULL);
+    close(unix_socket);
     exit(e);
 }
 
@@ -58,5 +61,13 @@ void init_swarm_client() {
     rump_pub_netconfig_ipv4_ifaddr(
             "shmif0", ip_address_str, "0.0.0.0");
     rump_pub_netconfig_ifup("shmif0");
+}
+
+ssize_t rump_sys_send(int sockfd, const void *buf, size_t len, int flags) {
+    return rump_sys_sendto(sockfd, buf, len, flags, NULL, 0);
+}
+
+ssize_t rump_sys_recv(int sockfd, void *buf, size_t len, int flags) {
+    return rump_sys_recvfrom(sockfd, buf, len, flags, NULL, 0);
 }
 

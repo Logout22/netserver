@@ -399,7 +399,7 @@ set_server_sock() {
   /* we dup this to up the reference count so when we do redirection
      of the io streams we don't accidentally toast the control
      connection in the case of our being a child of inetd. */
-  server_sock = dup(0);
+  server_sock = rump_sys_dup(0);
 
 #else
   if ((server_sock =
@@ -488,7 +488,7 @@ create_listens(char hostname[], char port[], int af) {
   while (local_res_temp != NULL) {
 
       if (local_res_temp->ai_family != AF_INET) {
-          err("Swarm does not support IPv6. Exiting.");
+          die(222, "Swarm does not support IPv6. Exiting.");
       }
     temp_socket = rump_sys_socket(
             RUMP_AF_INET, RUMP_SOCK_STREAM, 0);
@@ -613,7 +613,7 @@ setup_listens(char name[], char port[], int af) {
     /* if we have IPv6, try that one first because it may be a superset */
 #ifdef AF_INET6
     if (do_inet6)
-        err("Swarm does not support IPv6 yet. Choose IPv4.");
+        die(223, "Swarm does not support IPv6 yet. Choose IPv4.");
       create_listens("::0",port,AF_INET6);
 #endif
     if (do_inet)
@@ -724,7 +724,7 @@ recv_passphrase() {
 	  "Unable to match required passphrase.  Closing control connection\n");
   fflush(where);
 
-  close(server_sock);
+  rump_sys_close(server_sock);
   return -1;
 }
 
@@ -757,7 +757,7 @@ process_requests()
   while (1) {
 
     if (recv_request() <= 0) {
-      close(server_sock);
+      rump_sys_close(server_sock);
       return;
     }
 
@@ -1213,7 +1213,7 @@ accept_connection(SOCKET listen_fd) {
      child about *all* the listen endpoints? raj 2011-07-08 */
   server_control = listen_fd;
 
-  if ((server_sock = accept(listen_fd,
+  if ((server_sock = rump_sys_accept(listen_fd,
 			   (struct sockaddr *)&peeraddr,
 			    &peeraddrlen)) == INVALID_SOCKET) {
     fprintf(where,
@@ -1228,14 +1228,16 @@ accept_connection(SOCKET listen_fd) {
 #if defined(SO_KEEPALIVE)
   /* we are not terribly concerned if this does not work, it is merely
      duct tape added to belts and suspenders. raj 2011-07-08 */
-  setsockopt(server_sock,
-	     SOL_SOCKET,
-	     SO_KEEPALIVE,
+  rump_sys_setsockopt(server_sock,
+	     RUMP_SOL_SOCKET,
+	     RUMP_SO_KEEPALIVE,
 	     (const char *)&on,
 	     sizeof(on));
 #endif
 
   if (spawn_on_accept) {
+      die(221, "Swarm does not support forking either."
+              "Please disable spawning children, too.");
     spawn_child();
     /* spawn_child() only returns when we are the parent */
     close(server_sock);
@@ -1266,7 +1268,7 @@ accept_connections() {
     high_fd = set_fdset(listen_list,&read_fds);
 
 #if !defined(WIN32)
-    num_ready = select(high_fd + 1,
+    num_ready = rump_sys_select(high_fd + 1,
 #else
     num_ready = select(1,
 #endif
