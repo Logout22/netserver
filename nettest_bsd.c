@@ -165,6 +165,8 @@ int first_burst_size=-1;
 #include <sys/sendfile.h>
 #endif /* HAVE_SENDFILE && (__linux || __sun) */
 
+#include "swarm_client.h"
+
 
 
 /* these variables are specific to the BSD sockets tests, but can
@@ -609,9 +611,9 @@ set_tcp_mss(SOCKET socket, int mss) {
   netperf_socklen_t sock_opt_len;
 
   sock_opt_len = sizeof(int);
-  if ((setsockopt(socket,
-		  getprotobyname("tcp")->p_proto,
-		  TCP_MAXSEG,
+  if ((rump_sys_setsockopt(socket,
+		  RUMP_IPPROTO_TCP,
+		  RUMP_TCP_MAXSEG,
 		  (const char *)&mss,
 		  sock_opt_len) == SOCKET_ERROR) && (debug)) {
     fprintf(where,
@@ -1124,9 +1126,9 @@ set_socket_tos(SOCKET sock, int family, int socket_tos) {
   case AF_INET:
     /* should I mask-away anything above the byte? */
     my_tos = socket_tos;
-    if (setsockopt(sock,
-		   IPPROTO_IP,
-		   IP_TOS,
+    if (rump_sys_setsockopt(sock,
+		   RUMP_IPPROTO_IP,
+		   RUMP_IP_TOS,
 		   (const char *)&my_tos,sizeof(my_tos)) == SOCKET_ERROR) {
       fprintf(where,
 	      "%s ip_tos failed with %s (errno %d)\n",
@@ -1138,9 +1140,9 @@ set_socket_tos(SOCKET sock, int family, int socket_tos) {
     }
     else {
       sock_opt_len = sizeof(my_tos);
-      getsockopt(sock,
-		 IPPROTO_IP,
-		 IP_TOS,
+      rump_sys_getsockopt(sock,
+		 RUMP_IPPROTO_IP,
+		 RUMP_IP_TOS,
 		 (char *)&my_tos,
 		 &sock_opt_len);
     }
@@ -1198,7 +1200,22 @@ create_data_socket(struct addrinfo *res)
   netperf_socklen_t sock_opt_len;
 
   /*set up the data socket                        */
-  temp_socket = socket(res->ai_family,
+  switch (res->ai_family) {
+      case AF_INET: res->ai_family = RUMP_AF_INET; break;
+      default: die(23, "Address family not supported");
+  }
+  switch (res->ai_socktype) {
+      case SOCK_STREAM: res->ai_socktype = RUMP_SOCK_STREAM; break;
+      case SOCK_DGRAM: res->ai_socktype = RUMP_SOCK_DGRAM; break;
+      default: die(24, "Socket type not supported");
+  }
+  switch (res->ai_protocol) {
+      case IPPROTO_TCP: res->ai_protocol = RUMP_IPPROTO_TCP; break;
+      case IPPROTO_UDP: res->ai_protocol = RUMP_IPPROTO_UDP; break;
+      case 0: break;
+      default: die(25, "Protocol not supported");
+  }
+  temp_socket = rump_sys_socket(res->ai_family,
 		       res->ai_socktype,
 		       res->ai_protocol);
 
@@ -1236,8 +1253,8 @@ create_data_socket(struct addrinfo *res)
   /* all the oogy nitty gritty stuff moved from here into the routine
      being called below, per patches from davidm to workaround the bug
      in Linux getsockopt().  raj 2004-06-15 */
-  set_sock_buffer (temp_socket, SEND_BUFFER, lss_size_req, &lss_size);
-  set_sock_buffer (temp_socket, RECV_BUFFER, lsr_size_req, &lsr_size);
+  set_sock_buffer (temp_socket, AF_INET, SEND_BUFFER, lss_size_req, &lss_size);
+  set_sock_buffer (temp_socket, AF_INET, RECV_BUFFER, lsr_size_req, &lsr_size);
 
   /* now, we may wish to enable the copy avoidance features on the */
   /* local system. of course, this may not be possible... */
@@ -1245,6 +1262,7 @@ create_data_socket(struct addrinfo *res)
 #ifdef SO_RCV_COPYAVOID
   /* this is ancient vestigial HP-UX code that should probably go away
      one day */
+  die(22, "we are not supposed to run this.");
   if (loc_rcvavoid) {
     if (setsockopt(temp_socket,
 		   SOL_SOCKET,
@@ -1260,6 +1278,7 @@ create_data_socket(struct addrinfo *res)
 #endif
 
 #ifdef SO_SND_COPYAVOID
+  die(22, "we are not supposed to run this. II");
   if (loc_sndavoid) {
     if (setsockopt(temp_socket,
 		   SOL_SOCKET,
@@ -1296,7 +1315,7 @@ create_data_socket(struct addrinfo *res)
      mistakenly sets -D will hang.  raj 2005-04-21 */
 
 #if defined(TCP_NODELAY) || defined(SCTP_NODELAY)
-  if ((loc_nodelay) && (res->ai_protocol != IPPROTO_UDP)) {
+  if ((loc_nodelay) && (res->ai_protocol != RUMP_IPPROTO_UDP)) {
 
     /* strictly speaking, since the if defined above is an OR, we
        should probably check against TCP_NODELAY being defined here.
@@ -1304,7 +1323,7 @@ create_data_socket(struct addrinfo *res)
        TCP_NODELAY _NOT_ being defined is, probably :), epsilon.  raj
        2005-03-15 */
 
-    int option = TCP_NODELAY;
+    int option = RUMP_TCP_NODELAY;
 
     /* I suspect that WANT_SCTP would suffice here since that is the
        only time we would have called getaddrinfo with a hints asking
@@ -1320,7 +1339,7 @@ create_data_socket(struct addrinfo *res)
 #endif
 
     one = 1;
-    if(setsockopt(temp_socket,
+    if(rump_sys_setsockopt(temp_socket,
 		  res->ai_protocol,
 		  option,
 		  (char *)&one,
@@ -1343,13 +1362,14 @@ create_data_socket(struct addrinfo *res)
 
 #endif /* TCP_NODELAY */
 
-  if ((transport_mss_req != -1) && (IPPROTO_TCP == res->ai_protocol)) {
+  if ((transport_mss_req != -1) && (RUMP_IPPROTO_TCP == res->ai_protocol)) {
     set_tcp_mss(temp_socket,transport_mss_req);
   }
 
 #if defined(TCP_CORK)
 
   if (loc_tcpcork > 0) {
+      die(22, "TCP_CORK not available with rump.");
     /* the user wishes for us to set TCP_CORK on the socket */
     if (setsockopt(temp_socket,
 		   getprotobyname("tcp")->p_proto,
@@ -1376,9 +1396,9 @@ create_data_socket(struct addrinfo *res)
 #if defined(SO_KEEPALIVE)
 
   if (want_keepalive) {
-    if (setsockopt(temp_socket,
-		   SOL_SOCKET,
-		   SO_KEEPALIVE,
+    if (rump_sys_setsockopt(temp_socket,
+		   RUMP_SOL_SOCKET,
+		   RUMP_SO_KEEPALIVE,
 		   (const char *)&on,
 		   sizeof(on)) < 0) {
       if (debug) {
@@ -1399,27 +1419,9 @@ create_data_socket(struct addrinfo *res)
      bind() call here. even if the address and/or the port are zero
      (INADDR_ANY etc). raj 2004-07-20 */
 
-  if (setsockopt(temp_socket,
-#ifdef IPPROTO_DCCP
-		 /* it is REALLY SILLY THAT THIS SHOULD BE NEEDED!! I
-		    should be able to use SOL_SOCKET for this just
-		    like TCP and SCTP */
-		 /* IT IS EVEN SILLIER THAT THERE COULD BE SYSTEMS
-		    WITH IPPROTO_DCCP and no SOL_DCCP */
-#ifndef SOL_DCCP
-#define SOL_DCCP SOL_SOCKET
-#define NETPERF_NEED_CLEANUP 1
-#endif
-		 (res->ai_protocol == IPPROTO_DCCP) ? SOL_DCCP : SOL_SOCKET,
-#ifdef NETPERF_NEED_CLEANUP
-#undef SOL_DCCP
-#undef NETPERF_NEED_CLEANUP
-#endif
-
-#else
-		 SOL_SOCKET,
-#endif
-		 SO_REUSEADDR,
+  if (rump_sys_setsockopt(temp_socket,
+		 RUMP_SOL_SOCKET,
+		 RUMP_SO_REUSEADDR,
 		 (const char *)&on,
 		 sizeof(on)) < 0) {
     fprintf(where,
@@ -1428,7 +1430,7 @@ create_data_socket(struct addrinfo *res)
     fflush(where);
   }
 
-  if (bind(temp_socket,
+  if (rump_sys_bind(temp_socket,
 	   res->ai_addr,
 	   res->ai_addrlen) < 0) {
     if (debug) {
@@ -1451,11 +1453,11 @@ create_data_socket(struct addrinfo *res)
      people should not be allowed to run netperf in the first place
      but there we are... raj 20091026 */
 
-#if defined (SO_DONTROUTE)
+#if defined (RUMP_SO_DONTROUTE)
   if (!routing_allowed) {
-    if (setsockopt(temp_socket,
-		   SOL_SOCKET,
-		   SO_DONTROUTE,
+    if (rump_sys_setsockopt(temp_socket,
+		   RUMP_SOL_SOCKET,
+		   RUMP_SO_DONTROUTE,
 		   (char *)&one,
 		   sizeof(one)) == SOCKET_ERROR) {
       fprintf(where,
@@ -1466,7 +1468,8 @@ create_data_socket(struct addrinfo *res)
   }
 #endif
 
-#if defined(SO_PRIORITY)
+#if defined(RUMP_SO_PRIORITY)
+  // is not defined, so dont care
   if (local_socket_prio >= 0) {
     if (setsockopt(temp_socket,
                   SOL_SOCKET,
@@ -1511,8 +1514,8 @@ void
 kludge_socket_options(int temp_socket)
 {
 
-  set_sock_buffer(temp_socket, SEND_BUFFER, lss_size_req, &lss_size);
-  set_sock_buffer(temp_socket, RECV_BUFFER, lsr_size_req, &lsr_size);
+  set_sock_buffer(temp_socket, AF_INET, SEND_BUFFER, lss_size_req, &lss_size);
+  set_sock_buffer(temp_socket, AF_INET, RECV_BUFFER, lsr_size_req, &lsr_size);
 
   /* now, we may wish to enable the copy avoidance features on the */
   /* local system. of course, this may not be possible... */
