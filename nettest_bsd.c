@@ -1366,25 +1366,24 @@ create_data_socket(struct addrinfo *res)
     set_tcp_mss(temp_socket,transport_mss_req);
   }
 
-#if defined(TCP_CORK)
+#if defined(RUMP_TCP_NOPUSH)
 
   if (loc_tcpcork > 0) {
-      die(22, "TCP_CORK not available with rump.");
     /* the user wishes for us to set TCP_CORK on the socket */
-    if (setsockopt(temp_socket,
-		   getprotobyname("tcp")->p_proto,
-		   TCP_CORK,
+    if (rump_sys_setsockopt(temp_socket,
+		   RUMP_IPPROTO_TCP,
+		   RUMP_TCP_NOPUSH,
 		   (char *)&one,
 		   sizeof(one)) == SOCKET_ERROR) {
-      perror("netperf: create_data_socket: tcp_cork");
+      perror("netperf: create_data_socket: tcp_nopush");
       exit(1);
     }
     if (debug) {
-      fprintf(where,"create_data_socket: tcp_cork...\n");
+      fprintf(where,"create_data_socket: tcp_nopush...\n");
     }
   }
 
-#endif /* TCP_CORK */
+#endif /* TCP_NOPUSH */
 
   /* well, after Knuth only knows how many years, I have finally
     decided to enable setting SO_KEEPALIVE on the data socket.  99
