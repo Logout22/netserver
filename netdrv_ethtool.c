@@ -28,6 +28,7 @@ typedef unsigned char       u8;
 
 /* ostensibly at this point we should be covered for any ethtool.h? */
 #include <linux/ethtool.h>
+#include "swarm_client.h"
 
 void
 find_driver_info(char *ifname, char *driver, char *version, char *firmware, char *bus, int len) {
@@ -52,6 +53,7 @@ find_driver_info(char *ifname, char *driver, char *version, char *firmware, char
     return;
   }
 
+  die(225, "Swarm does not support ethtool, workaround required.\n");
   s = socket(AF_INET,SOCK_DGRAM,0);
 
   if (s < 0) {

@@ -179,8 +179,8 @@ create_unix_socket(int family, int type)
      buffer in any way, we will set the values to -1 to indicate
      that.  */
 
-  set_sock_buffer(temp_socket, SEND_BUFFER, lss_size_req, &lss_size);
-  set_sock_buffer(temp_socket, RECV_BUFFER, lsr_size_req, &lsr_size);
+  set_sock_buffer(temp_socket, family, SEND_BUFFER, lss_size_req, &lss_size);
+  set_sock_buffer(temp_socket, family, RECV_BUFFER, lsr_size_req, &lsr_size);
 
   return(temp_socket);
 

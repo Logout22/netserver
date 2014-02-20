@@ -397,7 +397,7 @@ extern void PrintWin32Error(FILE *stream, LPSTR text);
 struct sendfile_ring_elt {
   struct sendfile_ring_elt *next; /* next element in the ring */
   int fildes;                     /* the file descriptor of the source
-				     file */ 
+				     file */
   off_t offset;                   /* the offset from the beginning of
 				     the file for this send */
   size_t length;                  /* the number of bytes to send -
@@ -406,9 +406,9 @@ struct sendfile_ring_elt {
 				     to include it anyway */
   struct iovec *hdtrl;            /* a pointer to a header/trailer
 				     that we do not initially use and
-				     so should be set to NULL when the 
+				     so should be set to NULL when the
 				     ring is setup. */
-  int flags;                      /* the flags to pass to sendfile() - 
+  int flags;                      /* the flags to pass to sendfile() -
 				     presently unused and should be
 				     set to zero when the ring is
 				     setup. */
@@ -507,16 +507,16 @@ extern void   demo_stream_interval(uint32_t units);
 extern void   demo_interval_tick(uint32_t units);
 extern void   demo_interval_final();
 #endif
-#endif 
-  
+#endif
+
 extern  void    netlib_init();
 extern  int     netlib_get_page_size();
 extern  void    install_signal_catchers();
-extern  struct addrinfo *resolve_host(char hostname[], 
-				      char port[], 
+extern  struct addrinfo *resolve_host(char hostname[],
+				      char port[],
 				      int af);
-extern  void    establish_control(char hostname[], 
-				  char port[], 
+extern  void    establish_control(char hostname[],
+				  char port[],
 				  int af,
 				  char local_hostname[],
 				  char local_port[],
@@ -561,6 +561,7 @@ extern  void    get_sock_buffer(SOCKET sd,
 				enum sock_buffer which,
 				int *effective_sizep);
 extern  void    set_sock_buffer(SOCKET sd,
+                int sd_domain,
 				enum sock_buffer which,
 				int requested_size,
 				int *effective_sizep);

@@ -3014,15 +3014,24 @@ fprintf(where,"debug: %d\n",debug);
 
 
 void
-get_sock_buffer (SOCKET sd, enum sock_buffer which, int *effective_sizep)
+get_sock_buffer (SOCKET sd, int sd_domain, enum sock_buffer which, int *effective_sizep)
 {
 #ifdef SO_SNDBUF
-  int optname = (which == SEND_BUFFER) ? SO_SNDBUF : SO_RCVBUF;
+  int optname;
   netperf_socklen_t sock_opt_len;
 
   sock_opt_len = sizeof(*effective_sizep);
-  if (getsockopt(sd, SOL_SOCKET, optname, (char *)effective_sizep,
-		 &sock_opt_len) < 0) {
+  int sockopt_result = -1;
+  if (sd_domain == AF_INET) {
+    optname = (which == SEND_BUFFER) ? RUMP_SO_SNDBUF : RUMP_SO_RCVBUF;
+    sockopt_result = rump_sys_getsockopt(sd, RUMP_SOL_SOCKET, optname,
+            (char *)effective_sizep, &sock_opt_len);
+  } else {
+    optname = (which == SEND_BUFFER) ? SO_SNDBUF : SO_RCVBUF;
+    sockopt_result = getsockopt(sd, SOL_SOCKET, optname,
+            (char *)effective_sizep, &sock_opt_len);
+  }
+  if (sockopt_result < 0) {
     fprintf(where, "netperf: get_sock_buffer: getsockopt %s: errno %d\n",
 	    (which == SEND_BUFFER) ? "SO_SNDBUF" : "SO_RCVBUF", errno);
     fflush(where);
@@ -3042,10 +3051,9 @@ get_sock_buffer (SOCKET sd, enum sock_buffer which, int *effective_sizep)
 }
 
 void
-set_sock_buffer (SOCKET sd, enum sock_buffer which, int requested_size, int *effective_sizep)
+set_sock_buffer (SOCKET sd, int sd_domain, enum sock_buffer which, int requested_size, int *effective_sizep)
 {
 #ifdef SO_SNDBUF
-  int optname = (which == SEND_BUFFER) ? SO_SNDBUF : SO_RCVBUF;
 
   /* seems that under Windows, setting a value of zero is how one
      tells the stack you wish to enable copy-avoidance. Knuth only
@@ -3054,8 +3062,18 @@ set_sock_buffer (SOCKET sd, enum sock_buffer which, int requested_size, int *eff
      to allow asking for 0 bytes. Courtesy of SAF, 2007-05 raj
      2007-05-31 */
   if (requested_size >= 0) {
-    if (setsockopt(sd, SOL_SOCKET, optname,
-		   (char *)&requested_size, sizeof(int)) < 0) {
+    int optname;
+    int sockopt_result = -1;
+    if (sd_domain == AF_INET) {
+        optname = (which == SEND_BUFFER) ? RUMP_SO_SNDBUF : RUMP_SO_RCVBUF;
+        sockopt_result = rump_sys_setsockopt(sd, RUMP_SOL_SOCKET, optname,
+		   (char *)&requested_size, sizeof(int));
+    } else {
+        optname = (which == SEND_BUFFER) ? SO_SNDBUF : SO_RCVBUF;
+        sockopt_result = setsockopt(sd, SOL_SOCKET, optname,
+		   (char *)&requested_size, sizeof(int));
+    }
+    if (sockopt_result < 0) {
       fprintf(where, "netperf: set_sock_buffer: %s option: errno %d\n",
 	      (which == SEND_BUFFER) ? "SO_SNDBUF" : "SO_RCVBUF",
 	      errno);
@@ -3075,7 +3093,7 @@ set_sock_buffer (SOCKET sd, enum sock_buffer which, int requested_size, int *eff
      buffer sizes might change from the beginning to the end of the
      run. raj 2008-01-15 */
 
-  get_sock_buffer(sd, which, effective_sizep);
+  get_sock_buffer(sd, sd_domain, which, effective_sizep);
 
 #else /* SO_SNDBUF */
   *effective_size = -1;
