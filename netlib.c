@@ -2174,7 +2174,7 @@ shutdown_control()
 
   /* first, we say that we will be sending no more data on the */
   /* connection */
-  if (shutdown(netlib_control,1) == SOCKET_ERROR) {
+  if (rump_sys_shutdown(netlib_control, RUMP_SHUT_WR) == SOCKET_ERROR) {
     Print_errno(where,
             "shutdown_control: error in shutdown");
     fflush(where);
@@ -2196,7 +2196,7 @@ shutdown_control()
 
   /* select had better return one, or there was either a problem or a
      timeout... */
-  if (select(FD_SETSIZE,
+  if (rump_sys_select(FD_SETSIZE,
              &readfds,
              0,
              0,
@@ -2208,7 +2208,7 @@ shutdown_control()
   }
 
   /* we now assume that the socket has come ready for reading */
-  recv(netlib_control, buf, buflen,0);
+  rump_sys_recv(netlib_control, buf, buflen,0);
 
 }
 
@@ -2445,7 +2445,7 @@ send_request_n(int n)
     fflush(where);
   }
 
-  if (send(netlib_control,
+  if (rump_sys_send(netlib_control,
            (char *)&netperf_request,
            sizeof(netperf_request),
            0) != sizeof(netperf_request)) {
@@ -2816,7 +2816,7 @@ recv_response_timed_n(int addl_time, int n)
   /* select had better return one, or there was either a problem or a */
   /* timeout... */
 
-  if ((counter = select(FD_SETSIZE,
+  if ((counter = rump_sys_select(FD_SETSIZE,
 			&readfds,
 			0,
 			0,
@@ -2830,7 +2830,7 @@ recv_response_timed_n(int addl_time, int n)
   }
 
   while ((tot_bytes_recvd != buflen) &&
-	 ((bytes_recvd = recv(netlib_control, buf, bytes_left,0)) > 0 )) {
+	 ((bytes_recvd = rump_sys_recv(netlib_control, buf, bytes_left,0)) > 0 )) {
     tot_bytes_recvd += bytes_recvd;
     buf             += bytes_recvd;
     bytes_left      -= bytes_recvd;
@@ -3281,7 +3281,7 @@ establish_control_internal(char *hostname,
        - presumeably the stack or other transition mechanisms will be
        able to deal with that for us. famous last words :) raj
        2003-02-26 */
-    control_sock = socket(local_res_temp->ai_family,
+    control_sock = rump_sys_socket(local_res_temp->ai_family,
                           SOCK_STREAM,
                           0);
     if (control_sock == INVALID_SOCKET) {
@@ -3299,7 +3299,7 @@ establish_control_internal(char *hostname,
     /* if we are going to control the local enpoint addressing, we
        need to call bind. of course, we should probably be setting one
        of the SO_REUSEmumble socket options? raj 2005-02-04 */
-    if (bind(control_sock,
+    if (rump_sys_bind(control_sock,
 	     local_res_temp->ai_addr,
 	     local_res_temp->ai_addrlen) == 0) {
       if (debug) {
@@ -3309,7 +3309,7 @@ establish_control_internal(char *hostname,
 		localport);
       }
 
-      if (connect(control_sock,
+      if (rump_sys_connect(control_sock,
 		  remote_res_temp->ai_addr,
 		  remote_res_temp->ai_addrlen) == 0) {
 	/* we have successfully connected to the remote netserver */
@@ -3358,7 +3358,7 @@ establish_control_internal(char *hostname,
          don't worry about overheads for socket allocation or
          close. raj 2003-02-24 */
     }
-    close(control_sock);
+    rump_sys_close(control_sock);
   }
 
   control_family = local_res_temp->ai_family;
