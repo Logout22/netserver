@@ -1,2 +1,2 @@
-create_data_socket()
+omni_create_data_socket
 netlib.c:    control_sock = socket(local_res_temp->ai_family,
