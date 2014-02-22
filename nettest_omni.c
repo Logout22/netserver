@@ -3843,7 +3843,8 @@ send_omni_inner(char remote_host[], unsigned int legacy_caller, char header_str[
       /* some tests may require knowledge of our local addressing. such
 	 tests will for the time being require that the user specify a
 	 local IP/name so we can extract them from the data_socket. */
-      getsockname(data_socket, (struct sockaddr *)&my_addr, &my_addr_len);
+      rump_sys_getsockname(data_socket,
+              (struct sockaddr *)&my_addr, &my_addr_len);
 
       ret = get_sockaddr_family_addr_port(&my_addr,
 					  nf_to_af(omni_request->ipfamily),
