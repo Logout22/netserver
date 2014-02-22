@@ -584,13 +584,13 @@ void
 get_tcp_info(SOCKET socket, int *mss)
 {
 
-#ifdef TCP_MAXSEG
+#ifdef RUMP_TCP_MAXSEG
   netperf_socklen_t sock_opt_len;
 
   sock_opt_len = sizeof(int);
-  if (getsockopt(socket,
-		 getprotobyname("tcp")->p_proto,
-		 TCP_MAXSEG,
+  if (rump_sys_getsockopt(socket,
+		 RUMP_IPPROTO_TCP,
+		 RUMP_TCP_MAXSEG,
 		 (char *)mss,
 		 &sock_opt_len) == SOCKET_ERROR) {
     fprintf(where,
@@ -1983,7 +1983,9 @@ Size (bytes)\n\
 #endif
 
     /*Connect up to the remote port on the data socket  */
-    if (connect(send_socket,
+    // XXX remote_res is set up using Linux methods,
+    // but should be ok for the standard experiments
+    if (rump_sys_connect(send_socket,
 		remote_res->ai_addr,
 		remote_res->ai_addrlen) == INVALID_SOCKET){
       perror("netperf: send_tcp_stream: data socket connect failed");
@@ -2075,7 +2077,7 @@ Size (bytes)\n\
       }
 #endif /* WANT_HISTOGRAM */
 
-      if((len=send(send_socket,
+      if((len=rump_sys_send(send_socket,
 		   send_ring->buffer_ptr,
 		   send_size,
 		   0)) != send_size) {
@@ -2129,7 +2131,8 @@ Size (bytes)\n\
       get_tcp_info(send_socket,&tcp_mss);
     }
 
-    if (shutdown(send_socket,SHUT_WR) == SOCKET_ERROR && !times_up) {
+    if (rump_sys_shutdown(send_socket, RUMP_SHUT_WR) == SOCKET_ERROR &&
+            !times_up) {
       perror("netperf: cannot shutdown tcp stream socket");
       exit(1);
     }
@@ -2139,7 +2142,7 @@ Size (bytes)\n\
     /* shutdown to cause a FIN to be sent our way. We will assume that */
     /* any exit from the recv() call is good... raj 4/93 */
 
-    recv(send_socket, send_ring->buffer_ptr, send_size, 0);
+    rump_sys_recv(send_socket, send_ring->buffer_ptr, send_size, 0);
 
     /* this call will always give us the elapsed time for the test, and */
     /* will also store-away the necessaries for cpu utilization */
@@ -2152,7 +2155,7 @@ Size (bytes)\n\
     /* we are finished with the socket, so close it to prevent hitting */
     /* the limit on maximum open files. */
 
-    close(send_socket);
+    rump_sys_close(send_socket);
 
 #if defined(WANT_INTERVALS)
 #ifdef WIN32
@@ -2702,7 +2705,7 @@ Size (bytes)\n\
 #endif
 
     /*Connect up to the remote port on the data socket  */
-    if (connect(recv_socket,
+    if (rump_sys_connect(recv_socket,
 		remote_res->ai_addr,
 		remote_res->ai_addrlen) == INVALID_SOCKET){
       perror("netperf: send_tcp_maerts: data socket connect failed");
@@ -2790,7 +2793,7 @@ Size (bytes)\n\
     }
 #endif /* WANT_HISTOGRAM */
 
-    while ((!times_up) && (len=recv(recv_socket,
+    while ((!times_up) && (len=rump_sys_recv(recv_socket,
 				    recv_ring->buffer_ptr,
 				    recv_size,
 				    0)) > 0 ) {
@@ -2862,7 +2865,7 @@ Size (bytes)\n\
       get_tcp_info(recv_socket,&tcp_mss);
     }
 
-    if (shutdown(recv_socket,SHUT_WR) == SOCKET_ERROR) {
+    if (rump_sys_shutdown(recv_socket, RUMP_SHUT_WR) == SOCKET_ERROR) {
       perror("netperf: cannot shutdown tcp maerts socket");
       exit(1);
     }
@@ -2887,7 +2890,7 @@ Size (bytes)\n\
     /* we are finished with the socket, so close it to prevent hitting */
     /* the limit on maximum open files. */
 
-    close(recv_socket);
+    rump_sys_close(recv_socket);
 
     if (!no_control) {
       /* Get the statistics from the remote end. The remote will have
@@ -3286,7 +3289,7 @@ Size (bytes)\n\n";
   }
 
   /*Connect up to the remote port on the data socket  */
-  if (connect(send_socket,
+  if (rump_sys_connect(send_socket,
 	      remote_res->ai_addr,
 	      remote_res->ai_addrlen) == INVALID_SOCKET){
     perror("netperf: send_tcp_mss: data socket connect failed");
@@ -3300,7 +3303,7 @@ Size (bytes)\n\n";
 
   /* just go ahead and close the socket, the remote should figure it
      out */
-  close(send_socket);
+  rump_sys_close(send_socket);
 
   /* statistics? we don't need no stinking statistics */
 
@@ -3345,6 +3348,7 @@ void
 send_exs_tcp_stream(char remote_host[])
 {
 
+    die(23, "Whatever. Choose something other than send_exs_tcp_stream.");
     char *tput_title = "\
 Recv   Send    Send                          \n\
 Socket Socket  Message  Elapsed              \n\
@@ -4124,6 +4128,7 @@ sendfile_tcp_stream(remote_host)
      char	remote_host[];
 {
 
+    die(23, "Whatever. Choose something other than sendfile_tcp_stream.");
   char *tput_title = "\
 Recv   Send    Send                          \n\
 Socket Socket  Message  Elapsed              \n\
@@ -5107,9 +5112,9 @@ recv_tcp_stream()
   }
 
   /* Now, let's set-up the socket to listen for connections */
-  if (listen(s_listen, 5) == SOCKET_ERROR) {
+  if (rump_sys_listen(s_listen, 5) == SOCKET_ERROR) {
     netperf_response.content.serv_errno = errno;
-    close(s_listen);
+    rump_sys_close(s_listen);
     send_response();
 
     exit(1);
@@ -5118,11 +5123,11 @@ recv_tcp_stream()
 
   /* now get the port number assigned by the system  */
   addrlen = sizeof(myaddr_in);
-  if (getsockname(s_listen,
+  if (rump_sys_getsockname(s_listen,
 		  (struct sockaddr *)&myaddr_in,
 		  &addrlen) == SOCKET_ERROR){
     netperf_response.content.serv_errno = errno;
-    close(s_listen);
+    rump_sys_close(s_listen);
     send_response();
 
     exit(1);
@@ -5165,11 +5170,11 @@ recv_tcp_stream()
 
   addrlen = sizeof(peeraddr_in);
 
-  if ((s_data=accept(s_listen,
+  if ((s_data=rump_sys_accept(s_listen,
 		     (struct sockaddr *)&peeraddr_in,
 		     &addrlen)) == INVALID_SOCKET) {
     /* Let's just punt. The remote will be given some information */
-    close(s_listen);
+    rump_sys_close(s_listen);
     exit(1);
   }
 
@@ -5214,7 +5219,8 @@ recv_tcp_stream()
   bytes_received = 0;
   receive_calls  = 0;
 
-  while (!times_up && ((len = recv(s_data, recv_ring->buffer_ptr, recv_size, 0)) != 0)) {
+  while (!times_up && ((len = rump_sys_recv(
+                      s_data, recv_ring->buffer_ptr, recv_size, 0)) != 0)) {
     if (len == SOCKET_ERROR ) {
       if (times_up) {
 	break;
@@ -5244,7 +5250,7 @@ recv_tcp_stream()
 
 #ifdef DO_SELECT
 	FD_SET(s_data,&readfds);
-	select(s_data+1,&readfds,NULL,NULL,&timeout);
+	rump_sys_select(s_data+1,&readfds,NULL,NULL,&timeout);
 #endif /* DO_SELECT */
 
   }
@@ -5252,7 +5258,7 @@ recv_tcp_stream()
   /* perform a shutdown to signal the sender that */
   /* we have received all the data sent. raj 4/93 */
 
-  if (shutdown(s_data,SHUT_WR) == SOCKET_ERROR && !times_up) {
+  if (rump_sys_shutdown(s_data, RUMP_SHUT_WR) == SOCKET_ERROR && !times_up) {
       netperf_response.content.serv_errno = errno;
       send_response();
       exit(1);
@@ -5299,10 +5305,10 @@ recv_tcp_stream()
   send_response();
 
   /* we are now done with the sockets */
-  close(s_data);
-  close(s_listen);
+  rump_sys_close(s_data);
+  rump_sys_close(s_listen);
 
-  }
+}
 
 /* This is the server-side routine for the tcp maerts test. It is
    implemented as one routine. I could break things-out somewhat, but
@@ -5312,6 +5318,7 @@ void
 recv_tcp_maerts()
 {
 
+    die(22, "Did not port recv_tcp_maerts");
   struct sockaddr_storage myaddr_in, peeraddr_in;
   struct addrinfo *local_res;
   char  local_name[BUFSIZ];
@@ -5968,7 +5975,7 @@ Send   Recv    Send   Recv    usec/Tran  per sec  Outbound   Inbound\n\
 #endif
 
     /*Connect up to the remote port on the data socket  */
-    if (connect(send_socket,
+    if (rump_sys_connect(send_socket,
 		remote_res->ai_addr,
 		remote_res->ai_addrlen) == INVALID_SOCKET){
       perror("netperf: data socket connect failed");
@@ -6057,7 +6064,7 @@ Send   Recv    Send   Recv    usec/Tran  per sec  Outbound   Inbound\n\
 		  request_cwnd,
 		  first_burst_size);
 	}
-	if ((len = send(send_socket,
+	if ((len = rump_sys_send(send_socket,
 			send_ring->buffer_ptr,
 			req_size,
 			0)) != req_size) {
@@ -6081,7 +6088,7 @@ Send   Recv    Send   Recv    usec/Tran  per sec  Outbound   Inbound\n\
       }
 #endif /* WANT_HISTOGRAM */
 
-      if ((len = send(send_socket,
+      if ((len = rump_sys_send(send_socket,
 		      send_ring->buffer_ptr,
 		      req_size,
 		      0)) != req_size) {
@@ -6104,7 +6111,7 @@ Send   Recv    Send   Recv    usec/Tran  per sec  Outbound   Inbound\n\
       rsp_bytes_left = rsp_size;
       temp_message_ptr  = recv_ring->buffer_ptr;
       while(rsp_bytes_left > 0) {
-	if((rsp_bytes_recvd=recv(send_socket,
+	if((rsp_bytes_recvd=rump_sys_recv(send_socket,
 				 temp_message_ptr,
 				 rsp_bytes_left,
 				 0)) == SOCKET_ERROR || rsp_bytes_recvd == 0) {
@@ -6280,7 +6287,7 @@ Send   Recv    Send   Recv    usec/Tran  per sec  Outbound   Inbound\n\
     confidence_iteration++;
 
     /* we are now done with the socket, so close it */
-    close(send_socket);
+    rump_sys_close(send_socket);
 
   }
 
@@ -6726,7 +6733,7 @@ bytes   bytes    secs            #      #   %s/sec %% %c%c     us/KB\n\n";
     /* yet...also, this is the way I would expect a client to behave */
     /* when talking to a server */
     if (local_connected) {
-       if (connect(data_socket,
+       if (rump_sys_connect(data_socket,
       		   remote_res->ai_addr,
 		   remote_res->ai_addrlen) == INVALID_SOCKET){
           perror("send_udp_stream: data socket connect failed");
@@ -6737,8 +6744,11 @@ bytes   bytes    secs            #      #   %s/sec %% %c%c     us/KB\n\n";
        }
     }
 
+#if 0
+    // luckily, we use BSD
 #if defined (__linux)
   enable_enobufs(data_socket);
+#endif
 #endif
 
 #ifdef WIN32
@@ -6808,12 +6818,12 @@ bytes   bytes    secs            #      #   %s/sec %% %c%c     us/KB\n\n";
 #endif /* WANT_HISTOGRAM */
 
       if (local_connected) {
-         len = send(data_socket,
+         len = rump_sys_send(data_socket,
 	  	    send_ring->buffer_ptr,
 		    send_size,
 		    0);
       } else {
-         len = sendto(data_socket,
+         len = rump_sys_sendto(data_socket,
 		      send_ring->buffer_ptr,
 		      send_size,
 		      0,
@@ -6972,7 +6982,7 @@ bytes   bytes    secs            #      #   %s/sec %% %c%c     us/KB\n\n";
     confidence_iteration++;
 
     /* this datapoint is done, so we don't need the socket any longer */
-    close(data_socket);
+    rump_sys_close(data_socket);
 
   }
 
@@ -7226,11 +7236,11 @@ recv_udp_stream()
 
   /* now get the port number assigned by the system  */
   addrlen = sizeof(myaddr_in);
-  if (getsockname(s_data,
+  if (rump_sys_getsockname(s_data,
 		  (struct sockaddr *)&myaddr_in,
 		  &addrlen) == SOCKET_ERROR){
     netperf_response.content.serv_errno = errno;
-    close(s_data);
+    rump_sys_close(s_data);
     send_response();
 
     exit(1);
@@ -7309,7 +7319,7 @@ recv_udp_stream()
 
     /* Receive the first message using recvfrom to find the remote address */
     remote_addrlen = sizeof(remote_addr);
-    len = recvfrom(s_data, recv_ring->buffer_ptr,
+    len = rump_sys_recvfrom(s_data, recv_ring->buffer_ptr,
                    message_size, 0,
                    (struct sockaddr*)&remote_addr, &remote_addrlen);
     if (len != message_size) {
@@ -7324,11 +7334,11 @@ recv_udp_stream()
 
 
     /* Now connect with the remote socket address */
-    if (connect(s_data,
+    if (rump_sys_connect(s_data,
                 (struct sockaddr*)&remote_addr,
                 remote_addrlen )== INVALID_SOCKET) {
         netperf_response.content.serv_errno = errno;
-        close(s_data);
+        rump_sys_close(s_data);
         send_response();
         exit(1);
     }
@@ -7341,12 +7351,12 @@ recv_udp_stream()
 
   while (!times_up) {
     if(local_connected) {
-       len = recv(s_data,
+       len = rump_sys_recv(s_data,
                   recv_ring->buffer_ptr,
                   message_size,
                   0);
     } else {
-       len = recvfrom(s_data,
+       len = rump_sys_recvfrom(s_data,
                       recv_ring->buffer_ptr,
     	              message_size,
 		      0,0,0);
@@ -7423,7 +7433,7 @@ recv_udp_stream()
 
   send_response();
 
-  close(s_data);
+  rump_sys_close(s_data);
 
 }
 
@@ -7431,7 +7441,7 @@ recv_udp_stream()
 void
 send_udp_rr(char remote_host[])
 {
-
+die(22, "WANT_MIGRATION defined, should not be running");
   char *tput_title = "\
 Local /Remote\n\
 Socket Size   Request  Resp.   Elapsed  Trans.\n\
@@ -8246,11 +8256,11 @@ recv_udp_rr()
 
   /* now get the port number assigned by the system  */
   addrlen = sizeof(myaddr_in);
-  if (getsockname(s_data,
+  if (rump_sys_getsockname(s_data,
 		  (struct sockaddr *)&myaddr_in,
 		  &addrlen) == SOCKET_ERROR){
     netperf_response.content.serv_errno = errno;
-    close(s_data);
+    rump_sys_close(s_data);
     send_response();
 
     exit(1);
@@ -8327,7 +8337,7 @@ recv_udp_rr()
   while ((!times_up) || (trans_remaining > 0)) {
 
     /* receive the request from the other side */
-    if ((request_bytes_recvd = recvfrom(s_data,
+    if ((request_bytes_recvd = rump_sys_recvfrom(s_data,
 		 recv_ring->buffer_ptr,
 		 udp_rr_request->request_size,
 		 0,
@@ -8345,7 +8355,7 @@ recv_udp_rr()
     recv_ring = recv_ring->next;
 
     /* Now, send the response to the remote */
-    if ((response_bytes_sent = sendto(s_data,
+    if ((response_bytes_sent = rump_sys_sendto(s_data,
 				      send_ring->buffer_ptr,
 				      udp_rr_request->response_size,
 				      0,
@@ -8418,7 +8428,7 @@ recv_udp_rr()
   send_response();
 
   /* we are done with the socket now */
-  close(s_data);
+  rump_sys_close(s_data);
 
       }
 
@@ -8567,9 +8577,9 @@ recv_tcp_rr()
 
 
   /* Now, let's set-up the socket to listen for connections */
-  if (listen(s_listen, 5) == SOCKET_ERROR) {
+  if (rump_sys_listen(s_listen, 5) == SOCKET_ERROR) {
     netperf_response.content.serv_errno = errno;
-    close(s_listen);
+    rump_sys_close(s_listen);
     send_response();
 
     exit(1);
@@ -8578,11 +8588,11 @@ recv_tcp_rr()
 
   /* now get the port number assigned by the system  */
   addrlen = sizeof(myaddr_in);
-  if (getsockname(s_listen,
+  if (rump_sys_getsockname(s_listen,
 		  (struct sockaddr *)&myaddr_in,
 		  &addrlen) == SOCKET_ERROR) {
     netperf_response.content.serv_errno = errno;
-    close(s_listen);
+    rump_sys_close(s_listen);
     send_response();
 
     exit(1);
@@ -8623,11 +8633,11 @@ recv_tcp_rr()
 
   addrlen = sizeof(peeraddr_in);
 
-  if ((s_data = accept(s_listen,
+  if ((s_data = rump_sys_accept(s_listen,
 		       (struct sockaddr *)&peeraddr_in,
 		       &addrlen)) == INVALID_SOCKET) {
     /* Let's just punt. The remote will be given some information */
-    close(s_listen);
+    rump_sys_close(s_listen);
 
     exit(1);
   }
@@ -8681,7 +8691,7 @@ recv_tcp_rr()
     temp_message_ptr = recv_ring->buffer_ptr;
     request_bytes_remaining	= tcp_rr_request->request_size;
     while(request_bytes_remaining > 0) {
-      if((request_bytes_recvd=recv(s_data,
+      if((request_bytes_recvd = rump_sys_recv(s_data,
 				   temp_message_ptr,
 				   request_bytes_remaining,
 				   0)) == SOCKET_ERROR) {
@@ -8722,7 +8732,7 @@ recv_tcp_rr()
     }
 
     /* Now, send the response to the remote */
-    if((bytes_sent=send(s_data,
+    if((bytes_sent = rump_sys_send(s_data,
 			send_ring->buffer_ptr,
 			tcp_rr_request->response_size,
 			0)) == SOCKET_ERROR) {
@@ -8788,8 +8798,8 @@ recv_tcp_rr()
   }
 
   /* we are now done with the sockets */
-  close(s_data);
-  close(s_listen);
+  rump_sys_close(s_data);
+  rump_sys_close(s_listen);
 
   send_response();
 
@@ -9179,7 +9189,7 @@ newport:
        create_data_socket routine. */
 
     /* Connect up to the remote port on the data socket  */
-    if ((ret = connect(send_socket,
+    if ((ret = rump_sys_connect(send_socket,
 		       remote_res->ai_addr,
 		       remote_res->ai_addrlen)) == INVALID_SOCKET){
       if (SOCKET_EINTR(ret))
@@ -9194,7 +9204,7 @@ newport:
            the past, so go get another port, via create_data_socket.
            yes, this is a bit more overhead than before, but the
            condition should be rather rare.  raj 2005-02-08 */
-	close(send_socket);
+	rump_sys_close(send_socket);
 	goto newport;
       }
       perror("netperf: data socket connect failed");
@@ -9207,7 +9217,7 @@ newport:
 
 
     /* send the request */
-    if((len=send(send_socket,
+    if((len = rump_sys_send(send_socket,
 		 send_ring->buffer_ptr,
 		 req_size,
 		 0)) != req_size) {
@@ -9229,7 +9239,7 @@ newport:
 
 
     do {
-      rsp_bytes_recvd = recv(send_socket,
+      rsp_bytes_recvd = rump_sys_recv(send_socket,
 			     temp_message_ptr,
 			     rsp_bytes_left,
 			     0);
@@ -9260,12 +9270,12 @@ newport:
        otherwise the remote netserver does it to remain just like
        previous behaviour. raj 2007-27-08 */
     if (!no_control) {
-      shutdown(send_socket,SHUT_WR);
+      rump_sys_shutdown(send_socket, RUMP_SHUT_WR);
     }
 
     /* we are expecting to get either a return of zero indicating
        connection close, or an error.  */
-    rsp_bytes_recvd = recv(send_socket,
+    rsp_bytes_recvd = rump_sys_recv(send_socket,
 			   temp_message_ptr,
 			   1,
 			   0);
@@ -9314,7 +9324,7 @@ newport:
 	fflush(where);
       }
 
-      close(send_socket);
+      rump_sys_close(send_socket);
 
     }
     else {
@@ -9683,9 +9693,9 @@ recv_tcp_conn_rr()
 
 
   /* Now, let's set-up the socket to listen for connections */
-  if (listen(s_listen, 128) == SOCKET_ERROR) {
+  if (rump_sys_listen(s_listen, 128) == SOCKET_ERROR) {
     netperf_response.content.serv_errno = errno;
-    close(s_listen);
+    rump_sys_close(s_listen);
     send_response();
     if (debug) {
       fprintf(where,"could not listen\n");
@@ -9696,11 +9706,11 @@ recv_tcp_conn_rr()
 
   /* now get the port number assigned by the system  */
   addrlen = sizeof(myaddr_in);
-  if (getsockname(s_listen,
+  if (rump_sys_getsockname(s_listen,
 		  (struct sockaddr *)&myaddr_in,
 		  &addrlen) == SOCKET_ERROR){
     netperf_response.content.serv_errno = errno;
-    close(s_listen);
+    rump_sys_close(s_listen);
     send_response();
     if (debug) {
       fprintf(where,"could not getsockname\n");
@@ -9778,7 +9788,7 @@ recv_tcp_conn_rr()
        it to close s_listen while we are blocked on accept. */
     win_kludge_socket = s_listen;
 #endif
-    if ((s_data=accept(s_listen,
+    if ((s_data = rump_sys_accept(s_listen,
 		       (struct sockaddr *)&peeraddr_in,
 		       &addrlen)) == INVALID_SOCKET) {
       if (errno == EINTR) {
@@ -9788,7 +9798,7 @@ recv_tcp_conn_rr()
       }
       fprintf(where,"recv_tcp_conn_rr: accept: errno = %d\n",errno);
       fflush(where);
-      close(s_listen);
+      rump_sys_close(s_listen);
 
       exit(1);
     }
@@ -9822,7 +9832,7 @@ recv_tcp_conn_rr()
 
     /* receive the request from the other side */
     while (!times_up && (request_bytes_remaining > 0)) {
-      if((request_bytes_recvd=recv(s_data,
+      if((request_bytes_recvd = rump_sys_recv(s_data,
 				   temp_message_ptr,
 				   request_bytes_remaining,
 				   0)) == SOCKET_ERROR) {
@@ -9858,7 +9868,7 @@ recv_tcp_conn_rr()
     }
 
     /* Now, send the response to the remote */
-    if((bytes_sent=send(s_data,
+    if((bytes_sent = rump_sys_send(s_data,
 			send_message_ptr,
 			tcp_conn_rr_request->response_size,
 			0)) == SOCKET_ERROR) {
@@ -9893,16 +9903,16 @@ recv_tcp_conn_rr()
     /* appropriate sequence of calls - I would like to hear of */
     /* examples in web servers to the contrary. raj 10/95*/
 #ifdef TCP_CRR_SHUTDOWN
-    shutdown(s_data,SHUT_WR);
-    recv(s_data,
+    rump_sys_shutdown(s_data, RUMP_SHUT_WR);
+    rump_sys_recv(s_data,
 	 recv_message_ptr,
 	 1,
 	 0);
 bail:
-    close(s_data);
+    rump_sys_close(s_data);
 #else
 bail:
-    close(s_data);
+    rump_sys_close(s_data);
 #endif /* TCP_CRR_SHUTDOWN */
 
   }
@@ -12384,7 +12394,7 @@ Send   Recv    Send   Recv\n\
        taken care of by create_data_socket(). raj 2005-02-08 */
 
     /* Connect up to the remote port on the data socket  */
-    if ((ret = connect(send_socket,
+    if ((ret = rump_sys_connect(send_socket,
 		       remote_res->ai_addr,
 		       remote_res->ai_addrlen)) == INVALID_SOCKET){
       if (SOCKET_EINTR(ret))
@@ -12404,7 +12414,7 @@ Send   Recv    Send   Recv\n\
 
     /* we hang in a recv() to get the remote's close indication */
 
-    rsp_bytes_recvd=recv(send_socket,
+    rsp_bytes_recvd = rump_sys_recv(send_socket,
 			 temp_message_ptr,
 			 rsp_bytes_left,
 			 0);
@@ -12438,7 +12448,7 @@ Send   Recv    Send   Recv\n\
 	fflush(where);
       }
 
-      close(send_socket);
+      rump_sys_close(send_socket);
 
     }
     else {

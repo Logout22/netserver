@@ -117,6 +117,8 @@ char nettest_omni_id[]="\
 #include "netsh.h"
 #include "nettest_bsd.h"
 
+#include "swarm_client.h"
+
 /* we only really use this once, but the initial patch to
    src/nettest_bsd.c used it in several places. keep it as a macro
    just for kicks and just in case we do end-up needing to use it
@@ -759,9 +761,9 @@ set_multicast_ttl(SOCKET sock) {
 
   /* now set/get the TTL */
   if (multicast_ttl >= 0) {
-    if (setsockopt(sock,
-		   IPPROTO_IP,
-		   IP_TTL,
+    if (rump_sys_setsockopt(sock,
+		   RUMP_IPPROTO_IP,
+		   RUMP_IP_TTL,
 		   (const char *)&multicast_ttl,
 		   sizeof(multicast_ttl)) == SOCKET_ERROR) {
       fprintf(where,
@@ -769,9 +771,9 @@ set_multicast_ttl(SOCKET sock) {
 	      errno);
     }
   }
-  if (getsockopt(sock,
-		 IPPROTO_IP,
-		 IP_TTL,
+  if (rump_sys_getsockopt(sock,
+		 RUMP_IPPROTO_IP,
+		 RUMP_IP_TTL,
 		 (char *)&multicast_ttl,
 		 (netperf_socklen_t *)&optlen) < 0) {
     fprintf(where,
@@ -794,16 +796,16 @@ join_multicast_addr(SOCKET sock, struct addrinfo *res) {
 
     mreq.imr_multiaddr.s_addr=bar.s_addr;
     mreq.imr_interface.s_addr=htonl(INADDR_ANY);
-    if (setsockopt(sock,
-		   IPPROTO_IP,
-		   IP_ADD_MEMBERSHIP,
+    if (rump_sys_setsockopt(sock,
+		   RUMP_IPPROTO_IP,
+		   RUMP_IP_ADD_MEMBERSHIP,
 		   (const char *)&mreq,
 		   sizeof(mreq)) == 0) {
 
       /* let others do the same */
-      if (setsockopt(sock,
-		     SOL_SOCKET,
-		     SO_REUSEADDR,
+      if (rump_sys_setsockopt(sock,
+		     RUMP_SOL_SOCKET,
+		     RUMP_SO_REUSEADDR,
 		     (const char *)&one,
 		     sizeof(one)) == SOCKET_ERROR) {
 	if (debug) {
@@ -816,9 +818,9 @@ join_multicast_addr(SOCKET sock, struct addrinfo *res) {
 
       /* now set/get the TTL */
       if (multicast_ttl >= 0) {
-	if (setsockopt(sock,
-		       IPPROTO_IP,
-		       IP_TTL,
+	if (rump_sys_setsockopt(sock,
+		       RUMP_IPPROTO_IP,
+		       RUMP_IP_TTL,
 		       (const char *)&multicast_ttl,
 		       sizeof(multicast_ttl)) == SOCKET_ERROR) {
 	  fprintf(where,
@@ -826,9 +828,9 @@ join_multicast_addr(SOCKET sock, struct addrinfo *res) {
 		  errno);
 	}
       }
-      if (getsockopt(sock,
-		     IPPROTO_IP,
-		     IP_TTL,
+      if (rump_sys_getsockopt(sock,
+		     RUMP_IPPROTO_IP,
+		     RUMP_IP_TTL,
 		     (char *)&multicast_ttl,
 		     (netperf_socklen_t *)&optlen) == SOCKET_ERROR) {
 	fprintf(where,
@@ -2796,7 +2798,7 @@ connect_data_socket(SOCKET send_socket, struct addrinfo *remote_res)
   int ret;
 
   /* Connect up to the remote port on the data socket  */
-  if ((ret = connect(send_socket,
+  if ((ret = rump_sys_connect(send_socket,
 		     remote_res->ai_addr,
 		     remote_res->ai_addrlen)) == INVALID_SOCKET) {
     if (SOCKET_EINTR(ret))  {
@@ -2843,7 +2845,7 @@ send_data(SOCKET data_socket, struct ring_elt *send_ring, uint32_t bytes_to_send
   }
 
   if (destination) {
-    len = sendto(data_socket,
+    len = rump_sys_sendto(data_socket,
 		 send_ring->buffer_ptr,
 		 bytes_to_send,
 		 0,
@@ -2851,7 +2853,7 @@ send_data(SOCKET data_socket, struct ring_elt *send_ring, uint32_t bytes_to_send
 		 destlen);
   }
   else {
-    len = send(data_socket,
+    len = rump_sys_send(data_socket,
 	       send_ring->buffer_ptr,
 	       bytes_to_send,
 	       0);
@@ -3003,6 +3005,8 @@ recv_data(SOCKET data_socket, struct ring_elt *recv_ring, uint32_t bytes_to_recv
   int my_recvs;
   int my_flags = 0; /* will we one day want to set MSG_WAITALL? */
 
+#if 0
+  // rump is BSD
 #if defined(__linux)
   int ret;
   if (loc_rcvavoid == 1) {
@@ -3012,6 +3016,7 @@ recv_data(SOCKET data_socket, struct ring_elt *recv_ring, uint32_t bytes_to_recv
     else
       loc_rcvavoid = 0;
   }
+#endif
 #endif
 
   /* receive data off the data_socket, ass-u-me-ing a blocking socket
@@ -3042,7 +3047,7 @@ recv_data(SOCKET data_socket, struct ring_elt *recv_ring, uint32_t bytes_to_recv
 	 us out of the dowhile on the first call anyway.  if it
 	 turns-out not to be the case, then we can hoist the if above
 	 the do and put the dowhile in the else. */
-      bytes_recvd = recvfrom(data_socket,
+      bytes_recvd = rump_sys_recvfrom(data_socket,
 			     temp_message_ptr,
 			     bytes_left,
 			     my_flags,
@@ -3051,7 +3056,7 @@ recv_data(SOCKET data_socket, struct ring_elt *recv_ring, uint32_t bytes_to_recv
     }
     else {
       /* just call recv */
-      bytes_recvd = recv(data_socket,
+      bytes_recvd = rump_sys_recv(data_socket,
 			 temp_message_ptr,
 			 bytes_left,
 			 my_flags);
@@ -3120,24 +3125,24 @@ close_data_socket(SOCKET data_socket, struct sockaddr *peer, int peerlen, int pr
     int i;
     for (i = 0; i < 3; i++) {
       if (peer)
-	ret = sendto(data_socket,
+	ret = rump_sys_sendto(data_socket,
 		     buffer,
 		     0,
 		     0,
 		     peer,
 		     peerlen);
       else
-	ret = send(data_socket,
+	ret = rump_sys_send(data_socket,
 		   buffer,
 		   0,
 		   0);
       if (SOCKET_EINTR(ret)) {
-	close(data_socket);
+	rump_sys_close(data_socket);
 	return -1;
       }
     }
   }
-  ret = close(data_socket);
+  ret = rump_sys_close(data_socket);
 
   if (SOCKET_EINTR(ret)) {
     /* end of test */
@@ -3181,14 +3186,14 @@ disconnect_data_socket(SOCKET data_socket, int initiate, int do_close, struct so
 
   if (protocol != IPPROTO_UDP) {
     if (initiate)
-      shutdown(data_socket, SHUT_WR);
+      rump_sys_shutdown(data_socket, RUMP_SHUT_WR);
 
     /* we are expecting to get either a return of zero indicating
        connection close, or an error. of course, we *may* never
        receive anything from the remote which means we probably really
        aught to have a select here but until we are once bitten we
        will remain twice bold. */
-    bytes_recvd = recv(data_socket,
+    bytes_recvd = rump_sys_recv(data_socket,
 		       buffer,
 		       1,
 		       0);
@@ -3208,28 +3213,28 @@ disconnect_data_socket(SOCKET data_socket, int initiate, int do_close, struct so
     int i;
     for (i = 0; i < 3; i++) {
       if (peer)
-	bytes_recvd = sendto(data_socket,
+	bytes_recvd = rump_sys_sendto(data_socket,
 			     buffer,
 			     0,
 			     0,
 			     peer,
 			     peerlen);
       else
-	bytes_recvd = send(data_socket,
+	bytes_recvd = rump_sys_send(data_socket,
 			   buffer,
 			   0,
 			   0);
       /* we only really care if the timer expired on us */
       if (SOCKET_EINTR(bytes_recvd)) {
 	if (do_close)
-	  close(data_socket);
+	  rump_sys_close(data_socket);
 	return -1;
       }
     }
   }
 
   if (do_close)
-    close(data_socket);
+    rump_sys_close(data_socket);
 
   return 0;
 }
@@ -3261,7 +3266,7 @@ dump_tcp_info(struct tcp_info *tcp_info)
 static int
 get_transport_retrans(SOCKET socket, int protocol) {
 
-#ifdef HAVE_LINUX_TCP_H
+#ifndef _RUMP_RUMPDEFS_H_ //#ifdef HAVE_LINUX_TCP_H
   struct tcp_info tcp_info;
 
   int ret;
@@ -3307,9 +3312,9 @@ get_transport_info(SOCKET socket, int *mss, int protocol)
   sock_opt_len = sizeof(netperf_socklen_t);
 
   switch (protocol) {
-#if defined(IPPROTO_TCP) && defined(TCP_MAXSEG)
+#if defined(IPPROTO_TCP) && defined(RUMP_TCP_MAXSEG)
   case IPPROTO_TCP:
-    option = TCP_MAXSEG;
+    option = RUMP_TCP_MAXSEG;
     break;
 #endif
 
@@ -3323,7 +3328,7 @@ get_transport_info(SOCKET socket, int *mss, int protocol)
     return;
   }
 
-  if (getsockopt(socket,
+  if (rump_sys_getsockopt(socket,
 		 protocol,
 		 option,
 		 (char *)mss,
@@ -3347,7 +3352,7 @@ get_transport_info(SOCKET socket, int *mss, int protocol)
 static void
 get_transport_cong_control(SOCKET socket, int protocol, char cong_control[], int len)
 {
-#ifdef TCP_CONGESTION
+#ifndef _RUMP_RUMPDEFS_H_ //#ifdef TCP_CONGESTION
   socklen_t my_len = (socklen_t) len;
   if (protocol != IPPROTO_TCP) {
     strncpy(cong_control,"TCP Only",len);
@@ -3366,10 +3371,10 @@ get_transport_cong_control(SOCKET socket, int protocol, char cong_control[], int
 static void
 set_transport_cong_control(SOCKET socket, int protocol, char cong_control[], int len)
 {
-#ifdef TCP_CONGESTION
+#ifdef RUMP_TCP_CONGESTION
   if (protocol == IPPROTO_TCP) {
     /* if it fails, we'll pick that up via the subsequent "get" */
-    setsockopt(socket, protocol, TCP_CONGESTION, cong_control, len);
+    rump_sys_setsockopt(socket, protocol, TCP_CONGESTION, cong_control, len);
   }
 #endif
 }
@@ -3642,8 +3647,11 @@ send_omni_inner(char remote_host[], unsigned int legacy_caller, char header_str[
       perror("netperf: send_omni: unable to create data socket");
       exit(1);
     }
+#if 0
+    // again, rump is BSD
 #if defined(__linux)
     enable_enobufs(data_socket);
+#endif
 #endif
     need_socket = 0;
 
@@ -4041,8 +4049,10 @@ send_omni_inner(char remote_host[], unsigned int legacy_caller, char header_str[
 	  exit(1);
 	}
 	need_socket = 0;
+#if 0
 #if defined(__linux)
 	enable_enobufs(data_socket);
+#endif
 #endif
       }
 
@@ -4067,7 +4077,7 @@ send_omni_inner(char remote_host[], unsigned int legacy_caller, char header_str[
 	    fprintf(where,"transient! transient! torpedo in the water!\n");
 	    fflush(where);
 	  }
-	  close(data_socket);
+	  rump_sys_close(data_socket);
 	  connected = 0;  /* probably redundant but what the heck... */
 	  need_socket = 1;
 	  need_to_connect = 1;
@@ -5142,9 +5152,9 @@ recv_omni()
      accept. the age-old constant of 5 is probably OK for our purposes
      but does not necessarily represent best practice */
   if (need_to_accept) {
-    if (listen(s_listen, 5) == SOCKET_ERROR) {
+    if (rump_sys_listen(s_listen, 5) == SOCKET_ERROR) {
       netperf_response.content.serv_errno = errno;
-      close(s_listen);
+      rump_sys_close(s_listen);
       send_response();
       if (debug) {
 	fprintf(where,"could not listen\n");
@@ -5156,11 +5166,11 @@ recv_omni()
 
   /* now get the port number assigned by the system  */
   addrlen = sizeof(myaddr_in);
-  if (getsockname(s_listen,
+  if (rump_sys_getsockname(s_listen,
 		  (struct sockaddr *)&myaddr_in,
 		  &addrlen) == SOCKET_ERROR){
     netperf_response.content.serv_errno = errno;
-    close(s_listen);
+    rump_sys_close(s_listen);
     send_response();
     if (debug) {
       fprintf(where,"could not getsockname\n");
@@ -5287,7 +5297,7 @@ recv_omni()
 	 it to close s_listen while we are blocked on accept. */
       win_kludge_socket = s_listen;
 #endif
-      if ((data_socket=accept(s_listen,
+      if ((data_socket = rump_sys_accept(s_listen,
 			      (struct sockaddr *)&peeraddr_in,
 			      &addrlen)) == INVALID_SOCKET) {
 	if (errno == EINTR) {
@@ -5300,7 +5310,7 @@ recv_omni()
 	send_response();
 	fprintf(where,"%s: accept: errno = %d\n",__FUNCTION__,errno);
 	fflush(where);
-	close(s_listen);
+	rump_sys_close(s_listen);
 
 	exit(-1);
       }
@@ -5468,6 +5478,7 @@ recv_omni()
 
     if (connection_test) {
 #ifdef __linux
+#ifndef _RUMP_RUMPDEFS_H_
       /* so, "Linux" with autotuning likes to alter the socket buffer
 	 sizes over the life of the connection, but only does so when
 	 one takes the defaults at time of socket creation.  if we
@@ -5485,6 +5496,7 @@ recv_omni()
 	get_sock_buffer(data_socket, SEND_BUFFER, &lss_size_end);
       else
 	lss_size_end = lss_size;
+#endif
 #else
       lsr_size_end = lsr_size;
       lss_size_end = lss_size;
@@ -5526,7 +5538,7 @@ recv_omni()
      being  reached */
   stop_timer();
   cpu_stop(omni_request->flags & OMNI_MEASURE_CPU,&elapsed_time);
-  close(s_listen);
+  rump_sys_close(s_listen);
 
 #if defined(WANT_INTERVALS)
 #ifdef WIN32
