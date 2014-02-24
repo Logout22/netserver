@@ -1562,8 +1562,6 @@ main(int argc, char *argv[]) {
   }
   strcpy(program, argv[0]);
 
-  init_swarm_client();
-
   init_netserver_globals();
 
   netlib_init();
@@ -1575,6 +1573,8 @@ main(int argc, char *argv[]) {
   scan_netserver_args(argc, argv);
 
   check_if_inetd();
+
+  init_swarm_client();
 
   if (child) {
     /* we are the child of either an inetd or parent netserver via
