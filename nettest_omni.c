@@ -2886,7 +2886,7 @@ send_data(SOCKET data_socket, struct ring_elt *send_ring, uint32_t bytes_to_send
   return len;
 }
 
-#if defined(__linux)
+#if defined(__linux_rump_is_netbsd_not_linux)
 static int
 recv_data_no_copy(SOCKET data_socket, struct ring_elt *recv_ring, uint32_t bytes_to_recv, struct sockaddr *source, netperf_socklen_t *sourcelen, uint32_t flags, uint32_t *num_receives) {
 
@@ -3431,7 +3431,7 @@ print_uuid(char remote_host[])
 {
   printf("%s",test_uuid);
 }
-#if defined(__linux)
+#if defined(__linux_rump_is_netbsd_not_linux)
 /*
  * Linux has this odd behavior where if the socket buffers are larger
  * than a device's txqueuelen, the kernel will silently drop transmits
@@ -4299,7 +4299,7 @@ send_omni_inner(char remote_host[], unsigned int legacy_caller, char header_str[
 	 connection close here in the test loop. raj 2008-01-08 */
       if (connection_test) {
 
-#ifdef __linux
+#ifdef __linux_rump_is_not_linux_but_netbsd
 	/* so, "Linux" with autotuning likes to alter the socket buffer
 	   sizes over the life of the connection, but only does so when
 	   one takes the defaults at time of socket creation.  if we
@@ -4422,7 +4422,7 @@ send_omni_inner(char remote_host[], unsigned int legacy_caller, char header_str[
 
     if (connected) {
 
-#ifdef __linux
+#ifdef __linux_rump_is_netbsd_not_linux
       /* so, "Linux" with autotuning likes to alter the socket buffer
 	 sizes over the life of the connection, but only does so when
 	 one takes the defaults at time of socket creation.  if we took
@@ -5563,7 +5563,7 @@ recv_omni()
 						   omni_request->protocol);
 
   if (connected) {
-#ifdef __linux
+#ifdef __linux_rump_is_not_linux_but_netbsd
     /* so, "Linux" with autotuning likes to alter the socket buffer
        sizes over the life of the connection, but only does so when
        one takes the defaults at time of socket creation.  if we took
