@@ -3096,7 +3096,7 @@ set_sock_buffer (SOCKET sd, int sd_domain, enum sock_buffer which, int requested
   get_sock_buffer(sd, sd_domain, which, effective_sizep);
 
 #else /* SO_SNDBUF */
-  *effective_size = -1;
+  *effective_sizep = -1;
 #endif /* SO_SNDBUF */
 }
 

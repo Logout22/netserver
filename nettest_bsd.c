@@ -5318,7 +5318,6 @@ void
 recv_tcp_maerts()
 {
 
-    die(22, "Did not port recv_tcp_maerts");
   struct sockaddr_storage myaddr_in, peeraddr_in;
   struct addrinfo *local_res;
   char  local_name[BUFSIZ];
@@ -5465,9 +5464,9 @@ recv_tcp_maerts()
   }
 
   /* Now, let's set-up the socket to listen for connections */
-  if (listen(s_listen, 5) == SOCKET_ERROR) {
+  if (rump_sys_listen(s_listen, 5) == SOCKET_ERROR) {
     netperf_response.content.serv_errno = errno;
-    close(s_listen);
+    rump_sys_close(s_listen);
     send_response();
 
     exit(1);
@@ -5476,11 +5475,11 @@ recv_tcp_maerts()
 
   /* now get the port number assigned by the system  */
   addrlen = sizeof(myaddr_in);
-  if (getsockname(s_listen,
+  if (rump_sys_getsockname(s_listen,
 		  (struct sockaddr *)&myaddr_in,
 		  &addrlen) == SOCKET_ERROR){
     netperf_response.content.serv_errno = errno;
-    close(s_listen);
+    rump_sys_close(s_listen);
     send_response();
 
     exit(1);
@@ -5535,11 +5534,11 @@ recv_tcp_maerts()
   cpu_start(tcp_maerts_request->measure_cpu);
 
 
-  if ((s_data=accept(s_listen,
+  if ((s_data = rump_sys_accept(s_listen,
 		     (struct sockaddr *)&peeraddr_in,
 		     &addrlen)) == INVALID_SOCKET) {
     /* Let's just punt. The remote will be given some information */
-    close(s_listen);
+    rump_sys_close(s_listen);
     exit(1);
   }
 
@@ -5588,7 +5587,7 @@ recv_tcp_maerts()
 
 #endif /* DIRTY */
 
-    if((len=send(s_data,
+    if((len=rump_sys_send(s_data,
 		 send_ring->buffer_ptr,
 		 send_size,
 		 0)) != send_size) {
@@ -5598,7 +5597,7 @@ recv_tcp_maerts()
 		}
       netperf_response.content.serv_errno = errno;
       send_response();
-      exit(1);
+      die(1, NULL);
     }
 
     bytes_sent += len;
@@ -5612,7 +5611,7 @@ recv_tcp_maerts()
   /* perform a shutdown to signal the sender that */
   /* we have received all the data sent. raj 4/93 */
 
-  if (shutdown(s_data,SHUT_WR) == SOCKET_ERROR) {
+  if (rump_sys_shutdown(s_data, RUMP_SHUT_WR) == SOCKET_ERROR) {
       netperf_response.content.serv_errno = errno;
       send_response();
       exit(1);
@@ -5623,7 +5622,7 @@ recv_tcp_maerts()
      shutdown to cause a FIN to be sent our way. We will assume that
      any exit from the recv() call is good... raj 4/93 */
 
-  recv(s_data, send_ring->buffer_ptr, send_size, 0);
+  rump_sys_recv(s_data, send_ring->buffer_ptr, send_size, 0);
 
 
   cpu_stop(tcp_maerts_request->measure_cpu,&elapsed_time);
@@ -5666,8 +5665,8 @@ recv_tcp_maerts()
   send_response();
 
   /* we are now done with the sockets */
-  close(s_data);
-  close(s_listen);
+  rump_sys_close(s_data);
+  rump_sys_close(s_listen);
 
   }
 
@@ -6482,7 +6481,7 @@ Send   Recv    Send   Recv    usec/Tran  per sec  Outbound   Inbound\n\
 }
 #endif /* WANT_MIGRATION */
 
-#if defined(__linux)
+#if defined(__linux_rump_is_not_linux)
 /*
  * Linux has this odd behavior where if the socket buffers are larger than
  * a device's txqueuelen, the kernel will silently drop transmits which would
@@ -12808,9 +12807,9 @@ recv_tcp_cc()
 
 
   /* Now, let's set-up the socket to listen for connections */
-  if (listen(s_listen, 5) == SOCKET_ERROR) {
+  if (rump_sys_listen(s_listen, 5) == SOCKET_ERROR) {
     netperf_response.content.serv_errno = errno;
-    close(s_listen);
+    rump_sys_close(s_listen);
     send_response();
     if (debug) {
       fprintf(where,"could not listen\n");
@@ -12821,11 +12820,11 @@ recv_tcp_cc()
 
   /* now get the port number assigned by the system  */
   addrlen = sizeof(myaddr_in);
-  if (getsockname(s_listen,
+  if (rump_sys_getsockname(s_listen,
 		  (struct sockaddr *)&myaddr_in,
 		  &addrlen) == SOCKET_ERROR){
     netperf_response.content.serv_errno = errno;
-    close(s_listen);
+    rump_sys_close(s_listen);
     send_response();
     if (debug) {
       fprintf(where,"could not geetsockname\n");
@@ -12902,7 +12901,7 @@ recv_tcp_cc()
     win_kludge_socket = s_listen;
 #endif
     /* accept a connection from the remote */
-    if ((s_data=accept(s_listen,
+    if ((s_data = rump_sys_accept(s_listen,
 		       (struct sockaddr *)&peeraddr_in,
 		       &addrlen)) == INVALID_SOCKET) {
       if (errno == EINTR) {
@@ -12912,7 +12911,7 @@ recv_tcp_cc()
       }
       fprintf(where,"recv_tcp_cc: accept: errno = %d\n",errno);
       fflush(where);
-      close(s_listen);
+      rump_sys_close(s_listen);
 
       exit(1);
     }
@@ -12948,7 +12947,7 @@ recv_tcp_cc()
     /* then close(). I'm reasonably confident that this is the */
     /* appropriate sequence of calls - I would like to hear of */
     /* examples in web servers to the contrary. raj 10/95*/
-    close(s_data);
+    rump_sys_close(s_data);
 
     trans_received++;
     if (trans_remaining) {
