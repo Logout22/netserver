@@ -22,9 +22,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <swarm.h>
-#include <swarm_client_ipc.h>
-
 void __attribute__((__noreturn__)) die(int e, const char *msg);
 void init_swarm_client();
 ssize_t rump_sys_send(int sockfd, const void *buf, size_t len, int flags);
