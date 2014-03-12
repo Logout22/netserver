@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /bin/sh
 RD=../../rump
 cc -g -Wall -Wno-unused -O3 \
     -I. -I $RD/include -DHAVE_CONFIG_H -D_GNU_SOURCE -L$RD/lib \
