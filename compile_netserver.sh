@@ -1,10 +1,11 @@
-#! /bin/bash
+#! /bin/sh
 RD=../../rump
 cc -g -Wall -Wno-unused -O3 \
     -I. -I $RD/include -DHAVE_CONFIG_H -D_GNU_SOURCE -L$RD/lib \
-    -Wl,-R$RD/lib -Wl,--no-as-needed \
     -o netserver *.c \
-    -lrumpnet_shmif -lrumpnet_config \
-    -lrumpnet_netinet -lrumpnet_net -lrumpnet -lrump \
-    -ldl -lm
+    -Wl,-R$RD/lib -Wl,--whole-archive					\
+	    -lrumpnet_virtif -lrumpnet_config -lrumpdev_bpf		\
+	    -lrumpnet_netinet6 -lrumpnet_netinet -lrumpnet_net -lrumpnet\
+	    -lrump -lrumpuser	\
+	-Wl,--no-whole-archive -ldl -lm
 

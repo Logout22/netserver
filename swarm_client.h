@@ -22,6 +22,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#define RUMP_SHUT_WR 1
+
 void __attribute__((__noreturn__)) die(int e, const char *msg);
 void init_swarm_client();
 ssize_t rump_sys_send(int sockfd, const void *buf, size_t len, int flags);
