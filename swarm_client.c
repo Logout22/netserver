@@ -43,7 +43,8 @@ void init_swarm_client() {
 
     char *filename;
     in_addr_t ip_address;
-    if (rcv_reply_swarm_getshm(&ip_address, &filename) < 0) {
+    uint8_t mac_address[MAC_ADDR_LEN];
+    if (rcv_reply_swarm_getshm(&ip_address, mac_address, &filename) < 0) {
         die(errno, "read");
     }
 
@@ -53,7 +54,7 @@ void init_swarm_client() {
         die(errno, "stat");
     }
 
-    rump_pub_shmif_create(filename, 0);
+    rump_pub_shmif_create(filename, mac_address, 0);
     free(filename);
 
     char const *ip_address_str = inet_ntoa(
