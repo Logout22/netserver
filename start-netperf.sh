@@ -8,14 +8,14 @@ if [ "x$2" = "x" ]; then
   exit
 fi
 
-mkdir -p $2 > /dev/null 2>&1
+[ -d $2 ] || mkdir -p $2
 for i in tcp_stream tcp_maerts udp_stream; do
-  for j in `seq 1 100`; do
-    bin/netperf -cCH $1 -l -5000000000 -t $i -- -o > $2/$i.$j.csv;
+  for j in {01..100}; do
+    bin/netperf -cCH $1 -l -100000000000 -t $i -- -o > $2/$i.$j.csv;
   done
 done
 for i in tcp_rr tcp_crr udp_rr; do
-  for j in `seq 1 100`; do
+  for j in {01..100}; do
     bin/netperf -cCH $1 -l -100000 -t $i -- -o > $2/$i.$j.csv;
   done
 done
