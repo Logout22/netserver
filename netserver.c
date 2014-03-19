@@ -399,7 +399,7 @@ set_server_sock() {
   /* we dup this to up the reference count so when we do redirection
      of the io streams we don't accidentally toast the control
      connection in the case of our being a child of inetd. */
-  server_sock = rump_sys_dup(0);
+  server_sock = dup(0);
 
 #else
   if ((server_sock =
@@ -1418,6 +1418,8 @@ void
 daemonize() {
 #if defined(HAVE_FORK)
 
+  die(221, "Swarm does not support forking."
+           "Please disable daemon mode.");
   if (debug) {
     fprintf(where,
 	    "%s: enter\n",

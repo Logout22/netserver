@@ -60,6 +60,7 @@ void init_swarm_client() {
         die(errno, "stat");
     }
 
+    rump_pub_lwproc_rfork(RUMP_RFCFDG);
     rump_pub_shmif_create(filename, mac_address, 0);
     free(filename);
 
