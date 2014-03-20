@@ -8,13 +8,19 @@ die(int e, const char *msg)
 
     if (msg)
         warnx("%s: %d", msg, e);
-    rump_sys_reboot(0, NULL);
-    close(unix_socket);
     exit(e);
+}
+
+void exit_handler() {
+    rump_sys_reboot(0, NULL);
+    if (unix_socket >= 0) {
+        close(unix_socket);
+    }
 }
 
 void init_swarm_client() {
     rump_init();
+    atexit(exit_handler);
     unix_socket = socket(AF_UNIX, SOCK_STREAM, 0);
     if (!unix_socket) {
         die(errno, "socket");
