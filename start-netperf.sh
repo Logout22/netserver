@@ -11,12 +11,12 @@ fi
 [ -d $2 ] || mkdir -p $2
 for i in tcp_stream tcp_maerts udp_stream; do
   for j in {01..100}; do
-    bin/netperf -cCH $1 -l -100000000000 -t $i -- -o > $2/$i.$j.csv;
+    bin/netperf -cCH $1 -l 300 -t $i -- -o > $2/$i.$j.csv;
   done
 done
 for i in tcp_rr tcp_crr udp_rr; do
   for j in {01..100}; do
-    bin/netperf -cCH $1 -l -100000 -t $i -- -o > $2/$i.$j.csv;
+    bin/netperf -cCH $1 -l -500000 -t $i -- -o > $2/$i.$j.csv;
   done
 done
 
