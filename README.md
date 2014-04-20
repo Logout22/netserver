@@ -13,7 +13,7 @@ Computer 1:
         ./compile_netserver.sh
 
 - Setup DHCP server, if there is none
-- Install bridge according to [this article](https://github.com/rumpkernel/buildrump.sh/wiki/virtif-networking-howtos)
+- Install bridge according to [this article](https://github.com/rumpkernel/wiki/wiki/Howto:-Networking-with-if_virt)
 - Start netserver
 
         cd netserver
@@ -39,4 +39,3 @@ Troubleshooting:
 Please be aware that this can be quite slow. Please check with
 Wireshark for packet transmissions or try another benchmark
 if you see no progress.
-
