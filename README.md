@@ -17,7 +17,7 @@ Computer 1:
 - Start netserver
 
         cd netserver
-        ./start-netserver.sh (prints IP address assigned by DHCP)
+        ./start-netserver.sh  # prints IP address assigned by DHCP
 
 Computer 2:
 - Download and install netperf-2.6.0
